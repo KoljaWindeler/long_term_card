@@ -26,6 +26,30 @@ import {
   compareArray,
 } from './utils';
 
+function parseDate(eventDate,formater){
+	const normalizedFormat= formater.toLowerCase().replace(/[^a-zA-Z0-9]/g, '-');
+	const formatItems     = normalizedFormat.split('-');
+	const monthIndex  = formatItems.indexOf("mm");
+	const dayIndex    = formatItems.indexOf("dd");
+	const yearIndex   = formatItems.indexOf("yyyy");
+	const hourIndex     = formatItems.indexOf("hh");
+	const minutesIndex  = formatItems.indexOf("ii");
+	const secondsIndex  = formatItems.indexOf("ss");
+	const today = new Date();
+	// variable format date parseing
+
+	var normalized      = eventDate.replace(/[^a-zA-Z0-9]/g, '-');
+	var dateItems       = normalized.split('-');
+	var year  = yearIndex>-1  ? dateItems[yearIndex]    : today.getFullYear();
+	var month = monthIndex>-1 ? dateItems[monthIndex]-1 : today.getMonth()-1;
+	var day   = dayIndex>-1   ? dateItems[dayIndex]     : today.getDate();
+	var hour    = hourIndex>-1      ? dateItems[hourIndex]    : 0;
+	var minute  = minutesIndex>-1   ? dateItems[minutesIndex] : 0;
+	var second  = secondsIndex>-1   ? dateItems[secondsIndex] : 0;
+	return new Date(year,month,day,hour,minute,second);
+	// variable format date parseing
+}
+
 class MiniGraphCard extends LitElement {
   constructor() {
     super();
@@ -842,21 +866,14 @@ class MiniGraphCard extends LitElement {
 		// we're going to rework this to actually grab the atrribute data instead
     let start = initStart;
     let skipInitialState = false;
-    this.data = [];
     let raw_data = entity.attributes.entries; // entries stores the file content
 		let i_out=0;
 		let last_point = -1;
 		// is this really the way to work around parseDate
-		const normalizedFormat= this.config.formater.toLowerCase().replace(/[^a-zA-Z0-9]/g, '-');
-		const formatItems     = normalizedFormat.split('-');
-		const monthIndex  = formatItems.indexOf("mm");
-		const dayIndex    = formatItems.indexOf("dd");
-		const yearIndex   = formatItems.indexOf("yyyy");
-		const hourIndex     = formatItems.indexOf("hh");
-		const minutesIndex  = formatItems.indexOf("ii");
-		const secondsIndex  = formatItems.indexOf("ss");
-		const today = new Date();
 
+
+		// clear exising data
+		this.data = [];
     for (var i = 0; i < raw_data.length; i += 1) {
 			if(raw_data[i].split(this.config.data_delimiter).length>1){ // skip e.g. blank lines
 				if(last_point==-1){
@@ -866,26 +883,20 @@ class MiniGraphCard extends LitElement {
 						continue;
 					}
 				}
-				// variable format date parseing
 				var eventDate = raw_data[i].split(this.config.data_delimiter)[0];
-				var normalized      = eventDate.replace(/[^a-zA-Z0-9]/g, '-');
-				var dateItems       = normalized.split('-');
-				var year  = yearIndex>-1  ? dateItems[yearIndex]    : today.getFullYear();
-				var month = monthIndex>-1 ? dateItems[monthIndex]-1 : today.getMonth()-1;
-				var day   = dayIndex>-1   ? dateItems[dayIndex]     : today.getDate();
-				var hour    = hourIndex>-1      ? dateItems[hourIndex]    : 0;
-				var minute  = minutesIndex>-1   ? dateItems[minutesIndex] : 0;
-				var second  = secondsIndex>-1   ? dateItems[secondsIndex] : 0;
-				var parsedDate = new Date(year,month,day,hour,minute,second);
-				// variable format date parseing
-
+				var parsedDate = parseDate(eventDate,this.config.formater);
 				// check if data within limit
 				if((Date.now()-parsedDate)<(this.config.maxDays*86400000)) {
 					this.data[i_out] = [];
-					this.data[i_out]["last_changed"] = parsedDate.toString();
 					this.data[i_out]["last_changed_org"] = eventDate;
+					this.data[i_out]["last_changed"] = parsedDate.toString();
 					if(this.config.display_mode=='diff'){
-						this.data[i_out]["state"] = parseFloat(raw_data[i].split(this.config.data_delimiter)[1])-parseFloat(raw_data[last_point].split(this.config.data_delimiter)[1]);
+						// difference in days between the data, mostly this should be 1.0
+						let d_x = (parsedDate-parseDate(raw_data[last_point].split(this.config.data_delimiter)[0],this.config.formater))/86400000;
+						let d_y = parseFloat(raw_data[i].split(this.config.data_delimiter)[1])-parseFloat(raw_data[last_point].split(this.config.data_delimiter)[1])
+						// scale to 'per day'
+						this.data[i_out]["state"] = d_y/d_x;
+						// todo
 					} else {
 						this.data[i_out]["state"] = parseFloat(raw_data[i].split(this.config.data_delimiter)[1]);
 					}
@@ -895,7 +906,7 @@ class MiniGraphCard extends LitElement {
 			}
     }
 		this.setTooltip(0,i_out-1, this.data[i_out-1]["state"]);
-		
+
     if (entity.entity_id === this.entity[0].entity_id) {
       this.min = {
         type: 'min',

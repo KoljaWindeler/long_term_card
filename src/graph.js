@@ -45,9 +45,9 @@ export default class Graph {
     // extend length to fill missing history
     const requiredNumOfPoints = Math.ceil(this.hours * this.points);
     coords.length = requiredNumOfPoints;
-		console.log(coords);
+		//console.log(coords);
     this.coords = this._calcPoints(coords);
-		console.log(this.coords);
+		//console.log(this.coords);
     this.min = Math.min(...this.coords.map(item => Number(item[V])));
     this.max = Math.max(...this.coords.map(item => Number(item[V])));
   }
