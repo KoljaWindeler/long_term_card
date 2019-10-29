@@ -1,5 +1,4 @@
 import { LitElement, html, svg } from 'lit-element';
-import localForage from 'localforage/src/localforage';
 import Graph from './graph';
 import style from './style';
 import handleClick from './handleClick';
@@ -26,14 +25,6 @@ import {
   getFirstDefinedItem,
   compareArray,
 } from './utils';
-
-localForage.config({
-  name: 'mini-graph-card',
-  version: 1.0,
-  storeName: 'entity_history_cache',
-  description: 'Mini graph card uses caching for the entity history',
-});
-
 
 class MiniGraphCard extends LitElement {
   constructor() {
@@ -586,14 +577,9 @@ class MiniGraphCard extends LitElement {
 		const oneMinInHours = 1 / 60;
     now.setMilliseconds(now.getMilliseconds() - getMilli(offset * id + oneMinInHours));
     const end = getTime(now, { hour12: !this.config.hour24 }, this._hass.language);
-		//console.log("request data");
-		//console.log(this.data);
 		var start = end;//
-		//console.log(index+" vs len:"+this.data.length);
 		if(this.data.length>index){
-			//console.log("enough data");
 			start = this.data[index].last_changed_org;
-			//console.log(start);
 		}
 
     this.tooltip = {
@@ -852,94 +838,84 @@ class MiniGraphCard extends LitElement {
       || !this.updateQueue.includes(entity.entity_id)
       || this.config.entities[index].show_graph === false
     ) return;
-    let stateHistory = [];
+		// this is called when the state changes
+		// we're going to rework this to actually grab the atrribute data instead
     let start = initStart;
     let skipInitialState = false;
+    this.data = [];
+    let raw_data = entity.attributes.entries; // entries stores the file content
+		let i_out=0;
+		let last_point = -1;
+		// is this really the way to work around parseDate
+		const normalizedFormat= this.config.formater.toLowerCase().replace(/[^a-zA-Z0-9]/g, '-');
+		const formatItems     = normalizedFormat.split('-');
+		const monthIndex  = formatItems.indexOf("mm");
+		const dayIndex    = formatItems.indexOf("dd");
+		const yearIndex   = formatItems.indexOf("yyyy");
+		const hourIndex     = formatItems.indexOf("hh");
+		const minutesIndex  = formatItems.indexOf("ii");
+		const secondsIndex  = formatItems.indexOf("ss");
+		const today = new Date();
 
-    let history = [];
-		history.data = [];
-    var data = entity.attributes.entries; // todo
-		var ii=0;
-		var last_point = -1;
-		var format = this.config.formater;
-		var normalizedFormat= format.toLowerCase().replace(/[^a-zA-Z0-9]/g, '-');
-		var formatItems     = normalizedFormat.split('-');
-		var monthIndex  = formatItems.indexOf("mm");
-		var dayIndex    = formatItems.indexOf("dd");
-		var yearIndex   = formatItems.indexOf("yyyy");
-		var hourIndex     = formatItems.indexOf("hh");
-		var minutesIndex  = formatItems.indexOf("ii");
-		var secondsIndex  = formatItems.indexOf("ss");
-
-		console.log("displaymode");
-		console.log(this.config.display_mode);
-    for (var i = 0; i < data.length; i += 1) {
-			if(data[i].split(this.config.data_delimiter).length>1){
+    for (var i = 0; i < raw_data.length; i += 1) {
+			if(raw_data[i].split(this.config.data_delimiter).length>1){ // skip e.g. blank lines
 				if(last_point==-1){
 					last_point = i;
 					if(this.config.display_mode=='diff'){
+						// skip first line, can't diff it againt anything
 						continue;
 					}
 				}
-				var eventDate = data[i].split(this.config.data_delimiter)[0];
-				//console.log(data[i]);
+				// variable format date parseing
+				var eventDate = raw_data[i].split(this.config.data_delimiter)[0];
 				var normalized      = eventDate.replace(/[^a-zA-Z0-9]/g, '-');
 				var dateItems       = normalized.split('-');
-
-
-				var today = new Date();
-
 				var year  = yearIndex>-1  ? dateItems[yearIndex]    : today.getFullYear();
 				var month = monthIndex>-1 ? dateItems[monthIndex]-1 : today.getMonth()-1;
 				var day   = dayIndex>-1   ? dateItems[dayIndex]     : today.getDate();
-
 				var hour    = hourIndex>-1      ? dateItems[hourIndex]    : 0;
 				var minute  = minutesIndex>-1   ? dateItems[minutesIndex] : 0;
 				var second  = secondsIndex>-1   ? dateItems[secondsIndex] : 0;
-
 				var parsedDate = new Date(year,month,day,hour,minute,second);
+				// variable format date parseing
+
+				// check if data within limit
 				if((Date.now()-parsedDate)<(this.config.maxDays*86400000)) {
-					history.data[ii] = [];
-					history.data[ii]["last_changed"] = parsedDate.toString();
-					history.data[ii]["last_changed_org"] = eventDate;
+					this.data[i_out] = [];
+					this.data[i_out]["last_changed"] = parsedDate.toString();
+					this.data[i_out]["last_changed_org"] = eventDate;
 					if(this.config.display_mode=='diff'){
-						history.data[ii]["state"] = parseFloat(data[i].split(this.config.data_delimiter)[1])-parseFloat(data[last_point].split(this.config.data_delimiter)[1]);
+						this.data[i_out]["state"] = parseFloat(raw_data[i].split(this.config.data_delimiter)[1])-parseFloat(raw_data[last_point].split(this.config.data_delimiter)[1]);
 					} else {
-						history.data[ii]["state"] = parseFloat(data[i].split(this.config.data_delimiter)[1]);
+						this.data[i_out]["state"] = parseFloat(raw_data[i].split(this.config.data_delimiter)[1]);
 					}
-					ii++;
+					i_out++;
 				}
 				last_point = i;
-				//console.log(history2.data[i]);
 			}
     }
-    //console.log(history);
-		stateHistory = history.data;
-		//console.log("setting data");
-		this.data = stateHistory;
-		this.setTooltip(0,ii-1, history.data[ii-1]["state"]);
-
-
+		this.setTooltip(0,i_out-1, this.data[i_out-1]["state"]);
+		
     if (entity.entity_id === this.entity[0].entity_id) {
       this.min = {
         type: 'min',
-        ...getMin(stateHistory, 'state'),
+        ...getMin(this.data, 'state'),
       };
       this.avg = {
         type: 'avg',
-        state: getAvg(stateHistory, 'state'),
+        state: getAvg(this.data, 'state'),
       };
       this.max = {
         type: 'max',
-        ...getMax(stateHistory, 'state'),
+        ...getMax(this.data, 'state'),
       };
     }
 
     if (this.config.entities[index].fixed_value === true) {
-      const last = stateHistory[stateHistory.length - 1];
+      const last = this.data[this.data.length - 1];
       this.Graph[index].update([last, last]);
     } else {
-      this.Graph[index].update(stateHistory);
+      this.Graph[index].update(this.data);
     }
   }
 
