@@ -36,15 +36,15 @@ export default class Graph {
 
   update(history) {
     this._updateEndTime();
-		var date_l = Date.parse(history[history.length-1].last_changed);
-		var date_f = Date.parse(history[0].last_changed);
-		this.hours = (date_l-date_f)/(1000*60*60);
+    var date_l = Date.parse(history[history.length-1].last_changed);
+    var date_f = Date.parse(history[0].last_changed);
+    this.hours = (date_l-date_f)/(1000*60*60);
 
-    const coords = history;//.reduce((res, item) => this._reducer(res, item), []);
+    const coords = history; //.reduce((res, item) => this._reducer(res, item), []);
 
     // extend length to fill missing history
-    const requiredNumOfPoints = Math.ceil(this.hours * this.points);
-    coords.length = requiredNumOfPoints;
+    //const requiredNumOfPoints = Math.ceil(this.hours * this.points);
+    //coords.length = requiredNumOfPoints;
 		//console.log(coords);
     this.coords = this._calcPoints(coords);
 		//console.log(this.coords);
@@ -56,17 +56,17 @@ export default class Graph {
 
   _calcPoints(history) {
     const coords = [];
-		var date_l = Date.parse(history[history.length-1].last_changed);
-		var date_f = Date.parse(history[0].last_changed);
+    var date_l = Date.parse(history[history.length-1].last_changed);
+    var date_f = Date.parse(history[0].last_changed);
     let xRatio = this.width / ((date_l-date_f+1)/86400000); //
 
-		xRatio = Number.isFinite(xRatio) ? xRatio : this.width;
-		for (let i = 0; i < history.length; i += 1){
-			var date_c = Date.parse(history[i].last_changed);
-			var date_f = Date.parse(history[0].last_changed);
-			const x = xRatio * (date_c-date_f)/86400000;
-			coords.push([x, 0, history[i].state]);
-		}
+    xRatio = Number.isFinite(xRatio) ? xRatio : this.width;
+    for (let i = 0; i < history.length; i += 1){
+        var date_c = Date.parse(history[i].last_changed);
+        var date_f = Date.parse(history[0].last_changed);
+        const x = xRatio * (date_c-date_f)/86400000;
+        coords.push([x, 0, history[i].state]);
+    }
     return coords;
   }
 
