@@ -3608,7 +3608,7 @@
       this.gradient = [];
       this.display_mode = '';
       this.data_delimiter = '';
-      this.data_delimiter = '';
+      this.data_field = 1;
       this.tooltip = {};
       this.updateQueue = [];
       this.updating = false;
@@ -4390,11 +4390,11 @@
             if (this.config.display_mode == 'diff') {
               // difference in days between the data, mostly this should be 1.0
               let d_x = (parsedDate - parseDate(raw_data[last_point].split(this.config.data_delimiter)[0], this.config.formater)) / 86400000;
-              let d_y = parseFloat(raw_data[i].split(this.config.data_delimiter)[data_field]) - parseFloat(raw_data[last_point].split(this.config.data_delimiter)[data_field]); // scale to 'per day'
+              let d_y = parseFloat(raw_data[i].split(this.config.data_delimiter)[this.config.data_field]) - parseFloat(raw_data[last_point].split(this.config.data_delimiter)[this.config.data_field]); // scale to 'per day'
 
               this.data[i_out]["state"] = d_y / d_x; // todo
             } else {
-              this.data[i_out]["state"] = parseFloat(raw_data[i].split(this.config.data_delimiter)[data_field]);
+              this.data[i_out]["state"] = parseFloat(raw_data[i].split(this.config.data_delimiter)[this.config.data_field]);
             }
 
             i_out++;
