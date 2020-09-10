@@ -66,12 +66,13 @@ class MiniGraphCard extends LitElement {
     this.entity = [];
     this.line = [];
     this.bar = [];
-		this.data = [];
+    this.data = [];
     this.fill = [];
     this.points = [];
     this.gradient = [];
-		this.display_mode = '';
-		this.data_delimiter = '';
+    this.display_mode = '';
+    this.data_delimiter = '';
+    this.data_delimiter = '';
     this.tooltip = {};
     this.updateQueue = [];
     this.updating = false;
@@ -149,15 +150,16 @@ class MiniGraphCard extends LitElement {
       line_width: 5,
       compress: false,
       smoothing: false,
-			maxDays: 30,
-			formater: 'dd.mm.yyyy',
-			display_mode: 'abs',
-			data_delimiter: ';',
+      maxDays: 30,
+      formater: 'dd.mm.yyyy',
+      display_mode: 'abs',
+      data_delimiter: ';',
+      data_field: 1,
       state_map: [],
       tap_action: {
         action: 'more-info',
       },
-      ...config,
+      ...JSON.parse(JSON.stringify(config)),
       show: { ...DEFAULT_SHOW, ...config.show },
     };
 
@@ -201,7 +203,7 @@ class MiniGraphCard extends LitElement {
         conf.points_per_hour = MAX_BARS / (conf.hours_to_show * entities);
         // eslint-disable-next-line no-console
         console.warn(
-          'mini-graph-card: Not enough space, adjusting points_per_hour to ',
+          'long-term-card: Not enough space, adjusting points_per_hour to ',
           conf.points_per_hour,
         );
       }
@@ -491,8 +493,7 @@ class MiniGraphCard extends LitElement {
     const color = this.computeColor(this.entity[i].state, i);
     return svg`
       <g class='line--points'
-        ?tooltip=${this.tooltip.entity === i}
-        ?inactive=${this.tooltip.entity !== undefined && this.tooltip.entity !== i}
+        ?tooltip=${1==1}
         ?init=${this.length[i]}
         anim=${this.config.animate && this.config.show.points !== 'hover'}
         style="animation-delay: ${this.config.animate ? `${i * 0.5 + 0.5}s` : '0s'}"
@@ -524,8 +525,7 @@ class MiniGraphCard extends LitElement {
       : this.computeColor(this.entity[i].state, i);
     return svg`
       <rect class='line--rect'
-        ?inactive=${this.tooltip.entity !== undefined && this.tooltip.entity !== i}
-        id=${`rect-${this.id}-${i}`}
+        ?id=${`rect-${this.id}-${i}`}
         fill=${fill} height="100%" width="100%"
         mask=${`url(#line-${this.id}-${i})`}
       />`;
@@ -774,7 +774,7 @@ class MiniGraphCard extends LitElement {
         return stateMap.label;
       } else {
         // eslint-disable-next-line no-console
-        console.warn(`mini-graph-card: value [${inState}] not found in state_map`);
+        console.warn(`long-term-card: value [${inState}] not found in state_map`);
       }
     }
 
@@ -893,12 +893,12 @@ class MiniGraphCard extends LitElement {
 					if(this.config.display_mode=='diff'){
 						// difference in days between the data, mostly this should be 1.0
 						let d_x = (parsedDate-parseDate(raw_data[last_point].split(this.config.data_delimiter)[0],this.config.formater))/86400000;
-						let d_y = parseFloat(raw_data[i].split(this.config.data_delimiter)[1])-parseFloat(raw_data[last_point].split(this.config.data_delimiter)[1])
+						let d_y = parseFloat(raw_data[i].split(this.config.data_delimiter)[data_field])-parseFloat(raw_data[last_point].split(this.config.data_delimiter)[data_field])
 						// scale to 'per day'
 						this.data[i_out]["state"] = d_y/d_x;
 						// todo
 					} else {
-						this.data[i_out]["state"] = parseFloat(raw_data[i].split(this.config.data_delimiter)[1]);
+						this.data[i_out]["state"] = parseFloat(raw_data[i].split(this.config.data_delimiter)[data_field]);
 					}
 					i_out++;
 				}
@@ -971,4 +971,4 @@ class MiniGraphCard extends LitElement {
   }
 }
 
-customElements.define('mini-graph-card', MiniGraphCard);
+customElements.define('long-term-card', MiniGraphCard);

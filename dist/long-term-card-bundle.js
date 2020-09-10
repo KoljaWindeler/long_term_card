@@ -3608,6 +3608,7 @@
       this.gradient = [];
       this.display_mode = '';
       this.data_delimiter = '';
+      this.data_delimiter = '';
       this.tooltip = {};
       this.updateQueue = [];
       this.updating = false;
