@@ -2,6 +2,7 @@ import { LitElement, html, svg } from 'lit-element';
 import Graph from './graph';
 import style from './style';
 import handleClick from './handleClick';
+import dateFormat from './date.format';
 
 import {
   URL_DOCS,
@@ -26,8 +27,21 @@ import {
   compareArray,
 } from './utils';
 
+function parseFloatEsc(data){
+	var normalized= data.replace(/[^0-9.]/g, '');
+	return parseFloat(normalized);
+}
+
+
 function parseDate(eventDate,formater){
-	const normalizedFormat= formater.toLowerCase().replace(/[^a-zA-Z0-9]/g, '-');
+	var normalizedFormat= formater.toLowerCase().replace(/[^a-zA-Z0-9]/g, '-');
+	while(1){
+      if(normalizedFormat.indexOf('--')>=0){
+         normalizedFormat = normalizedFormat.replace('--','-');
+      } else {
+         break;
+      }
+   }
 	const formatItems     = normalizedFormat.split('-');
 	const monthIndex  = formatItems.indexOf("mm");
 	const dayIndex    = formatItems.indexOf("dd");
@@ -37,8 +51,14 @@ function parseDate(eventDate,formater){
 	const secondsIndex  = formatItems.indexOf("ss");
 	const today = new Date();
 	// variable format date parseing
-
-	var normalized      = eventDate.replace(/[^a-zA-Z0-9]/g, '-');
+	var normalized      = JSON.stringify(eventDate).replace(/[^a-zA-Z0-9]/g, '-').replace('T','-');
+	while(1){
+      if(normalized.indexOf('--')>=0){
+         normalized = normalized.replace('--','-');
+      } else {
+         break;
+      }
+   }
 	var dateItems       = normalized.split('-');
 	var year  = yearIndex>-1  ? dateItems[yearIndex]    : today.getFullYear();
 	var month = monthIndex>-1 ? dateItems[monthIndex]-1 : today.getMonth()-1;
@@ -72,6 +92,7 @@ class MiniGraphCard extends LitElement {
     this.gradient = [];
     this.display_mode = '';
     this.data_delimiter = '';
+    this.data_property = '';
     this.data_field = 1;
     this.tooltip = {};
     this.updateQueue = [];
@@ -152,8 +173,10 @@ class MiniGraphCard extends LitElement {
       smoothing: false,
       maxDays: 30,
       formater: 'dd.mm.yyyy',
+      date_out_format: 'dd.mm.yyyy',
       display_mode: 'abs',
       data_delimiter: ';',
+      data_property: 'entries',
       data_field: 1,
       state_map: [],
       tap_action: {
@@ -780,7 +803,7 @@ class MiniGraphCard extends LitElement {
 
     let state;
     if (typeof inState === 'string') {
-      state = parseFloat(inState.replace(/,/g, '.'));
+      state = parseFloatEsc(inState.replace(/,/g, '.'));
     } else {
       state = Number(inState);
     }
@@ -866,46 +889,48 @@ class MiniGraphCard extends LitElement {
 		// we're going to rework this to actually grab the atrribute data instead
     let start = initStart;
     let skipInitialState = false;
-    let raw_data = entity.attributes.entries; // entries stores the file content
-		let i_out=0;
-		let last_point = -1;
-		// is this really the way to work around parseDate
-
-
-		// clear exising data
-		this.data = [];
+    let raw_data = entity.attributes[this.config.data_property]; // entries stores the file content
+    let i_out=0;
+    let last_point = -1;
+    // is this really the way to work around parseDate
+    // clear exising data
+    this.data = [];
     for (var i = 0; i < raw_data.length; i += 1) {
-			if(raw_data[i].split(this.config.data_delimiter).length>1){ // skip e.g. blank lines
-				if(last_point==-1){
-					last_point = i;
-					if(this.config.display_mode=='diff'){
-						// skip first line, can't diff it againt anything
-						continue;
-					}
-				}
-				var eventDate = raw_data[i].split(this.config.data_delimiter)[0];
-				var parsedDate = parseDate(eventDate,this.config.formater);
-				// check if data within limit
-				if((Date.now()-parsedDate)<(this.config.maxDays*86400000)) {
-					this.data[i_out] = [];
-					this.data[i_out]["last_changed_org"] = eventDate;
-					this.data[i_out]["last_changed"] = parsedDate.toString();
-					if(this.config.display_mode=='diff'){
-						// difference in days between the data, mostly this should be 1.0
-						let d_x = (parsedDate-parseDate(raw_data[last_point].split(this.config.data_delimiter)[0],this.config.formater))/86400000;
-						let d_y = parseFloat(raw_data[i].split(this.config.data_delimiter)[this.config.data_field])-parseFloat(raw_data[last_point].split(this.config.data_delimiter)[this.config.data_field])
-						// scale to 'per day'
-						this.data[i_out]["state"] = d_y/d_x;
-						// todo
-					} else {
-						this.data[i_out]["state"] = parseFloat(raw_data[i].split(this.config.data_delimiter)[this.config.data_field]);
-					}
-					i_out++;
-				}
-				last_point = i;
-			}
+       raw_data[i] = JSON.stringify(raw_data[i]);
+       if(raw_data[i].split(this.config.data_delimiter).length>1){ // skip e.g. blank lines
+         if(last_point==-1){
+            last_point = i;
+            if(this.config.display_mode=='diff'){
+               // skip first line, can't diff it againt anything
+               continue;
+            }
+         }
+         var eventDate = raw_data[i].split(this.config.data_delimiter)[0];
+         var parsedDate = parseDate(eventDate,this.config.formater);
+         // check if data within limit
+         if((Date.now()-parsedDate)<(this.config.maxDays*86400000)) {
+            this.data[i_out] = [];
+//				var dateFormat = require('dateformat');
+//            this.data[i_out]["last_changed_org"] = dateFormat(parsedDate,this.config.date_out_format);
+            this.data[i_out]["last_changed_org"] = parsedDate.format(this.config.date_out_format);
+            this.data[i_out]["last_changed"] = parsedDate.toString();
+            if(this.config.display_mode=='diff'){
+               // difference in days between the data, mostly this should be 1.0
+               let d_x = (parsedDate-parseDate(raw_data[last_point].split(this.config.data_delimiter)[0],this.config.formater))/86400000;
+               let d_y = parseFloatEsc(raw_data[i].split(this.config.data_delimiter)[this.config.data_field])-parseFloatEsc(raw_data[last_point].split(this.config.data_delimiter)[this.config.data_field])
+               // scale to 'per day'
+               this.data[i_out]["state"] = d_y/d_x;
+               // todo
+            } else {
+               this.data[i_out]["state"] = parseFloatEsc(raw_data[i].split(this.config.data_delimiter)[this.config.data_field]);
+            }
+            //console.log(this.data[i_out]);
+            i_out++;
+         }
+         last_point = i;
+      }
     }
-		this.setTooltip(0,i_out-1, this.data[i_out-1]["state"]);
+    this.setTooltip(0,i_out-1, this.data[i_out-1]["state"]);
 
     if (entity.entity_id === this.entity[0].entity_id) {
       this.min = {
