@@ -4527,7 +4527,7 @@
           var eventDate = raw_data[i].split(this.config.data_delimiter)[0];
           var parsedDate = parseDate(eventDate, this.config.formater); // check if data within limit
 
-          if (Date.now() - parsedDate < this.config.maxDays * 86400000) {
+          if (Math.abs(Date.now() - parsedDate) < this.config.maxDays * 86400000) {
             this.data[i_out] = []; //				var dateFormat = require('dateformat');
             //            this.data[i_out]["last_changed_org"] = dateFormat(parsedDate,this.config.date_out_format);
 
