@@ -3558,6 +3558,17 @@
           break;
         }
 
+      case 'fire-dom-event':
+        {
+          e = new Event('ll-custom', {
+            composed: true,
+            bubbles: true
+          });
+          e.detail = actionConfig;
+          node.dispatchEvent(e);
+          break;
+        }
+
       case 'url':
         {
           if (!actionConfig.url) return;

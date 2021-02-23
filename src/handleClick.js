@@ -23,6 +23,12 @@ export default (node, hass, config, actionConfig, entityId) => {
       hass.callService(domain, service, serviceData);
       break;
     }
+    case 'fire-dom-event': {
+      e = new Event('ll-custom', { composed: true, bubbles: true });
+      e.detail = actionConfig;
+      node.dispatchEvent(e);
+      break;
+    }
     case 'url': {
       if (!actionConfig.url) return;
       window.location.href = actionConfig.url;
